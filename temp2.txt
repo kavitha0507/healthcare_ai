@@ -1,0 +1,120 @@
+
+# 2. Define Tools
+@tool
+def get_dietary_guidelines(condition: str):
+    """Provides specific dietary recommendations based on a medical condition."""
+    guidelines = {"hyperlipidemia": "Eat: Oatmeal, Salmon, Walnuts. Avoid: Butter, Fried foods.", "high blood pressure": "Eat: Leafy Greens, Berries, Beets. Avoid: Processed foods, Sugary drinks.", "diabetes": "Eat: Whole grains, Fatty fish, Leafy Greens. Avoid: Sugary drinks, Refined grains."}
+    return guidelines.get(condition.lower(), "Focus on whole foods and lean proteins.")
+
+@tool
+def find_specialist(condition: str):
+    """Suggests the type of medical doctor to see for a specific condition."""
+    specialists = {"hyperlipidemia": "Cardiologist"}
+    return f"Consider seeing a {specialists.get(condition.lower(), 'General Practitioner')}."
+
+@tool
+def save_user_info(name: str, conditions: str):
+    """Saves or updates the user's name and health conditions to the database."""
+    session = Session()
+    user = session.query(UserProfile).first()
+    if not user:
+        user = UserProfile(name=name, conditions=conditions)
+        session.add(user)
+    else:
+        user.name = name
+        user.conditions = conditions
+    session.commit()
+    session.close()
+    return f"I've updated your profile, {name}. I'll remember your conditions: {conditions}."
+
+@tool
+def get_austin_clinics(specialty: str):
+    """Provides a list of clinics in the Austin, Texas area based on specialty."""
+    clinics = {
+        "cardiologist": ["Austin Heart", "St. David's Cardiovascular"],
+        "endocrinologist": ["Texas Diabetes & Endocrinology", "Austin Endocrinology"]
+    }
+    return clinics.get(specialty.lower(), ["Seton Medical Center", "Baylor Scott & White"])
+
+# Don't forget to add this to your tools list!
+tools = [get_dietary_guidelines, find_specialist, save_user_info]
+
+tools = [get_dietary_guidelines, find_specialist, save_user_info,get_austin_clinics]
+tools_dict = {t.name: t for t in tools}
+
+# 3. Initialize Brain & Bind Tools
+llm = ChatGroq(
+   model="llama-3.3-70b-versatile",
+    groq_api_key=GROQ_API_KEY
+).bind_tools(tools)
+
+async def run_medisync_agent(user_input: str):
+    # 1. Fetch from DB
+    session = Session()
+    user = session.query(UserProfile).first()
+    user_context = "No profile found." if not user else f"User: {user.name}, Condition: {user.conditions}."
+    session.close()
+    
+    # Debug: Print input and context
+    print(f"DEBUG: User input: {user_input}")
+    print(f"DEBUG: User context: {user_context}")
+
+    # 2. System Prompt
+    messages = [
+        SystemMessage(content=(
+            f"You are the MediSync Assistant. {user_context} "
+            "If the user asks about their profile or diet, you MUST use your tools. "
+            "Always provide a helpful text response, even if you don't use a tool."
+        )),
+        HumanMessage(content=user_input)
+    ]
+    
+    # Pass 1: Initial Thought
+    ai_msg = llm.invoke(messages)
+    
+    # Debug: Print AI response details
+    print(f"DEBUG: AI response content: '{ai_msg.content}'")
+    print(f"DEBUG: AI tool calls: {ai_msg.tool_calls}")
+    
+    # 3. Logic Gate: If tools are called, execute them
+    if ai_msg.tool_calls:
+        messages.append(ai_msg)
+        for tool_call in ai_msg.tool_calls:
+            tool_name = tool_call["name"]
+            selected_tool = tools_dict[tool_name]
+            observation = selected_tool.invoke(tool_call["args"])
+            messages.append(ToolMessage(content=str(observation), tool_call_id=tool_call["id"]))
+        
+        # Pass 2: Final Summary
+        final_response = llm.invoke(messages)
+        if final_response.content:
+            return final_response.content
+        else:
+            return "I processed your request but couldn't generate a specific recommendation. Please try rephrasing your question."
+    
+    # 4. Fallback: If no tools were called, return the AI's plain text response
+    if not ai_msg.content:
+        return "I understood your request but couldn't find a specific recommendation. Could you provide more details about your symptoms?"
+        
+    return ai_msg.content
+
+# 5. The Route
+# 5. The Route
+@app.get("/advise")
+async def get_patient_advice(user_query: str):
+    try:
+        # We call the correct function name here
+        response = await run_medisync_agent(user_query)
+        
+        if not response or not response.strip():
+            return {"response": "I'm sorry, I couldn't generate a recommendation. Please try again."}
+            
+        return {"response": response}
+    
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        # This will now tell you the EXACT line number and error in PowerShell
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
