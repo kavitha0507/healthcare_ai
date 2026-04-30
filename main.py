@@ -12,6 +12,11 @@ from sqlalchemy.orm import sessionmaker
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# 1. Load Keys
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -22,8 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
 # Database Setup
-engine = create_engine("sqlite:///medisync_memory.db")
+engine = create_engine("sqlite:////tmp/medisync_memory.db")
 Base = declarative_base()
 
 class UserProfile(Base):
@@ -35,9 +42,7 @@ class UserProfile(Base):
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
-# 1. Load Keys
-load_dotenv()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 
 # 2. Define Tools
 @tool
@@ -213,4 +218,4 @@ async def get_patient_advice(user_query: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=10000, reload=True)
