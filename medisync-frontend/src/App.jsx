@@ -11,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
+  const [lastBMICategory, setLastBMICategory] = useState(null); // Store BMI category for personalized diet
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -63,13 +64,23 @@ function App() {
           const response = await fetch(`${API_URL}/bmi?weight=${weight}&height=${height}`);
           const data = await response.json();
           botText = data.message;
+          
+          // Extract BMI category from the response for personalized diet
+          const lowerMessage = data.message.toLowerCase();
+          if (lowerMessage.includes('normal')) setLastBMICategory('normal');
+          else if (lowerMessage.includes('overweight')) setLastBMICategory('overweight');
+          else if (lowerMessage.includes('obese')) setLastBMICategory('obese');
+          else if (lowerMessage.includes('underweight')) setLastBMICategory('underweight');
+          
         } else if (lowerInput.includes('bmi') || lowerInput.includes('calculate')) {
           botText = "I'll calculate your BMI. Please provide your weight in pounds (e.g., 143lb) and height (e.g., 5.3 or 63in).";
         } else {
           botText = "I need your weight in pounds (e.g., 143lb) and height in inches or feet (e.g., 5.3 or 63in).";
         }
       } else if (lowerInput.includes('diet')) {
-        const response = await fetch(`${API_URL}/diet?condition=general`);
+        // Use BMI category if available for personalized diet, otherwise use general
+        const dietCondition = lastBMICategory || 'general';
+        const response = await fetch(`${API_URL}/diet?condition=${dietCondition}`);
         const data = await response.json();
         botText = data.message;
       } else {
