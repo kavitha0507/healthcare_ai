@@ -29,16 +29,25 @@ function App() {
       const type = input.toLowerCase().includes('bmi') ? 'BMI' : 'GENERAL';
       
       if (input.toLowerCase().includes('bmi')) {
-        const weightMatch = input.match(/(\d+)\s*lb/i);
-        const heightMatch = input.match(/(\d+(?:\.\d+)?)\s*['"]?/i);
+        // Try to match weight (number followed by lb or lbs)
+        const weightMatch = input.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs)/i);
+        // Try to match height - either after a comma/space or standalone number
+        let heightMatch = input.match(/[,\s]+(\d+(?:\.\d+)?)\s*(?:in|inches)?/i);
+        if (!heightMatch) {
+          heightMatch = input.match(/(\d+(?:\.\d+)?)\s*(?:in|inches)/i);
+        }
         if (weightMatch && heightMatch) {
           const weight = parseFloat(weightMatch[1]);
-          const height = parseFloat(heightMatch[1]);
+          let height = parseFloat(heightMatch[1]);
+          // If height is less than 10, assume it's in feet (convert to inches)
+          if (height < 10) {
+            height = height * 12;
+          }
           const response = await fetch(`${API_URL}/bmi?weight=${weight}&height=${height}`);
           const data = await response.json();
           botText = data.message;
         } else {
-          botText = "I need your weight (lb) and height (inches) to calculate BMI.";
+          botText = "I need your weight in pounds (e.g., 143lb) and height in inches or feet (e.g., 5.3 or 63in).";
         }
       } else if (input.toLowerCase().includes('diet')) {
         const response = await fetch(`${API_URL}/diet?condition=general`);
