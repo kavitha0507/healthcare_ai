@@ -16,6 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+if not GROQ_API_KEY:
+    print("⚠️  WARNING: GROQ_API_KEY not found in environment variables!")
+    print("Please set GROQ_API_KEY in your Render dashboard.")
+    # Don't crash - set a placeholder for now
+    GROQ_API_KEY = "placeholder_key"
+
 
 app = FastAPI()
 
@@ -217,5 +223,9 @@ async def get_patient_advice(user_query: str):
         # This will now tell you the EXACT line number and error in PowerShell
         raise HTTPException(status_code=500, detail=str(e))
 
+# For Render deployment - export the app handler
+handler = app
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=10000, reload=True)
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
