@@ -142,12 +142,12 @@ function App() {
           </div>
 
           {/* Messages Area */}
-          <div className={`flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar ${showHistory ? 'opacity-50' : 'opacity-100'} transition-opacity`}>
+          <div className={`flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar ${showHistory ? 'opacity-50' : 'opacity-100'} transition-opacity`}>
             {messages.map((msg, i) => (
-              <div key={i} className={`p-5 rounded-[28px] text-sm leading-relaxed relative ${
+              <div key={i} className={`p-4 rounded-[24px] text-sm leading-relaxed relative max-w-[80%] ${
                 msg.role === 'user' 
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl' 
-                  : 'bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl ml-auto' 
+                  : 'bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm mr-auto'
               }`}>
                 {/* --- POSITIVE REINFORCEMENT (Confetti for Normal) --- */}
                 {msg.role === 'bot' && msg.text.toLowerCase().includes('normal') && (
