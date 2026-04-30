@@ -35,8 +35,9 @@ app.add_middleware(
 
 
 
-# Database Setup
-engine = create_engine("sqlite:////tmp/medisync_memory.db")
+# Database Setup - Use in-memory SQLite for Render to avoid permission issues
+database_url = os.getenv("DATABASE_URL", "sqlite:///:memory:")
+engine = create_engine(database_url)
 Base = declarative_base()
 
 class UserProfile(Base):
@@ -223,9 +224,8 @@ async def get_patient_advice(user_query: str):
         # This will now tell you the EXACT line number and error in PowerShell
         raise HTTPException(status_code=500, detail=str(e))
 
-# For Render deployment - export the app handler
-handler = app
-
+# For local development only - Vercel uses api/index.py
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
