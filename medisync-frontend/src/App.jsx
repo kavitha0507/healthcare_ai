@@ -143,30 +143,65 @@ function App() {
 
           {/* Messages Area */}
           <div className={`flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar ${showHistory ? 'opacity-50' : 'opacity-100'} transition-opacity`}>
-            {messages.map((msg, i) => (
-              <div key={i} className={`p-4 rounded-[24px] text-sm leading-relaxed relative max-w-[80%] ${
-                msg.role === 'user' 
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl ml-auto' 
-                  : 'bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm mr-auto'
-              }`}>
-                {/* --- POSITIVE REINFORCEMENT (Confetti for Normal) --- */}
-                {msg.role === 'bot' && msg.text.toLowerCase().includes('normal') && (
-                  <div className="confetti-container">
-                    <Sparkles className="text-yellow-400 animate-confetti" size={16} />
-                    <Sparkles className="text-blue-400 animate-confetti" size={12} style={{ animationDelay: '0.2s' }} />
-                    <Sparkles className="text-purple-400 animate-confetti" size={14} style={{ animationDelay: '0.1s' }} />
-                  </div>
-                )}
+            {messages.map((msg, i) => {
+              // Determine BMI category for color coding
+              const lowerText = msg.text.toLowerCase();
+              const isNormal = lowerText.includes('normal') && lowerText.includes('bmi');
+              const isOverweight = lowerText.includes('overweight') && lowerText.includes('bmi');
+              const isUnderweight = lowerText.includes('underweight') && lowerText.includes('bmi');
+              const isObese = lowerText.includes('obese') && lowerText.includes('bmi');
+              
+              // Set border color based on BMI category
+              let bmiBorderColor = '';
+              if (isNormal) bmiBorderColor = 'border-l-4 border-green-500';
+              else if (isOverweight) bmiBorderColor = 'border-l-4 border-yellow-500';
+              else if (isUnderweight || isObese) bmiBorderColor = 'border-l-4 border-red-500';
+              
+              return (
+                <div key={i} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                  {/* AI Logo for bot messages */}
+                  {msg.role === 'bot' && (
+                    <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+                      <Sparkles className="text-white" size={16} />
+                    </div>
+                  )}
+                  
+                  <div className={`p-4 rounded-[24px] text-sm leading-relaxed relative max-w-[80%] ${
+                    msg.role === 'user' 
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl' 
+                      : `bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm ${bmiBorderColor}`
+                  }`}>
+                    {/* --- BMI COLOR INDICATOR --- */}
+                    {isNormal && (
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-[8px]">✓</span>
+                      </div>
+                    )}
+                    {isOverweight && (
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-[8px]">!</span>
+                      </div>
+                    )}
+                    {(isUnderweight || isObese) && (
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-[8px]">!</span>
+                      </div>
+                    )}
+                    
+                    {/* --- POSITIVE REINFORCEMENT (Confetti for Normal) --- */}
+                    {msg.role === 'bot' && isNormal && (
+                      <div className="confetti-container">
+                        <Sparkles className="text-yellow-400 animate-confetti" size={16} />
+                        <Sparkles className="text-blue-400 animate-confetti" size={12} style={{ animationDelay: '0.2s' }} />
+                        <Sparkles className="text-purple-400 animate-confetti" size={14} style={{ animationDelay: '0.1s' }} />
+                      </div>
+                    )}
 
-                {/* --- SUPPORTIVE INSIGHT (Accent for Overweight) --- */}
-                {msg.role === 'bot' && msg.text.toLowerCase().includes('overweight') && (
-                  <div className="absolute -left-1 top-4 bottom-4 w-1 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.5)]">
-                    {/* This adds a glowing amber "importance" bar to the side of the bubble */}
+                    {msg.text}
                   </div>
-                )}
-                {msg.text}
-              </div>
-            ))}
+                </div>
+              );
+            })}
             {loading && (
                <div className="flex gap-2 p-5 bg-white/50 w-28 rounded-2xl animate-pulse ml-14">
                   <div className="w-2 h-2 bg-slate-300 rounded-full" />
