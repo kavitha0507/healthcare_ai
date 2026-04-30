@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart, Send, User, Bot, Activity, Shield, Sparkles, History, X } from 'lucide-react';
 
+const API_URL = 'https://healthcare-ai-q3yl.vercel.app';
+
 function App() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([
@@ -32,18 +34,18 @@ function App() {
         if (weightMatch && heightMatch) {
           const weight = parseFloat(weightMatch[1]);
           const height = parseFloat(heightMatch[1]);
-          const response = await fetch(`http://127.0.0.1:8000/bmi?weight=${weight}&height=${height}`);
+          const response = await fetch(`${API_URL}/bmi?weight=${weight}&height=${height}`);
           const data = await response.json();
           botText = data.message;
         } else {
           botText = "I need your weight (lb) and height (inches) to calculate BMI.";
         }
       } else if (input.toLowerCase().includes('diet')) {
-        const response = await fetch(`http://127.0.0.1:8000/diet?condition=general`);
+        const response = await fetch(`${API_URL}/diet?condition=general`);
         const data = await response.json();
         botText = data.message;
       } else {
-        const response = await fetch(`http://127.0.0.1:8000/advise?user_query=${encodeURIComponent(input)}`);
+        const response = await fetch(`${API_URL}/advise?user_query=${encodeURIComponent(input)}`);
         const data = await response.json();
         botText = data.response || data.message;
       }
