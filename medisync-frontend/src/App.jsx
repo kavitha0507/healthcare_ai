@@ -20,24 +20,26 @@ function App() {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+    
     const userMsg = { role: 'user', text: input };
     setMessages(prev => [...prev, userMsg]);
+    const currentInput = input;
     setInput('');
     setLoading(true);
 
     try {
       let botText = "";
-      const lowerInput = input.toLowerCase();
+      const lowerInput = currentInput.toLowerCase();
       
       // Check for weight pattern (number followed by lb or lbs)
-      const weightMatch = input.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs)/i);
+      const weightMatch = currentInput.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs)/i);
       // Check for height pattern
-      let heightMatch = input.match(/[,\s]+(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)?['"]?/i);
+      let heightMatch = currentInput.match(/[,\s]+(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)?['"]?/i);
       if (!heightMatch) {
-        heightMatch = input.match(/(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)/i);
+        heightMatch = currentInput.match(/(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)/i);
       }
       // Also match patterns like "5.3'" or "5'3"" (feet and inches)
-      const heightFeetInchesMatch = input.match(/(\d+)'\s*(\d+)/i);
+      const heightFeetInchesMatch = currentInput.match(/(\d+)'\s*(\d+)/i);
       
       const isBMIRequest = lowerInput.includes('bmi') || lowerInput.includes('calculate') || 
                           (weightMatch && heightMatch) || (weightMatch && heightFeetInchesMatch);
@@ -61,16 +63,43 @@ function App() {
             }
           }
           
-          const response = await fetch(`${API_URL}/bmi?weight=${weight}&height=${height}`);
-          const data = await response.json();
-          botText = data.message;
+          // Local BMI calculation as fallback
+          const localBMI = (weight / (height * height)) * 703;
+          let localCategory = '';
+          if (localBMI < 18.5) localCategory = 'underweight';
+          else if (localBMI < 25) localCategory = 'normal';
+          else if (localBMI < 30) localCategory = 'overweight';
+          else localCategory = 'obese';
           
-          // Extract BMI category from the response for personalized diet
-          const lowerMessage = data.message.toLowerCase();
-          if (lowerMessage.includes('normal')) setLastBMICategory('normal');
-          else if (lowerMessage.includes('overweight')) setLastBMICategory('overweight');
-          else if (lowerMessage.includes('obese')) setLastBMICategory('obese');
-          else if (lowerMessage.includes('underweight')) setLastBMICategory('underweight');
+          try {
+            const response = await fetch(`${API_URL}/bmi?weight=${weight}&height=${height}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              signal: AbortSignal.timeout(10000) // 10 second timeout
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            botText = data.message || `Your BMI is ${localBMI.toFixed(1)} (${localCategory})`;
+            
+            // Extract BMI category from the response for personalized diet
+            const lowerMessage = data.message.toLowerCase();
+            if (lowerMessage.includes('normal')) setLastBMICategory('normal');
+            else if (lowerMessage.includes('overweight')) setLastBMICategory('overweight');
+            else if (lowerMessage.includes('obese')) setLastBMICategory('obese');
+            else if (lowerMessage.includes('underweight')) setLastBMICategory('underweight');
+            else setLastBMICategory(localCategory);
+            
+          } catch (apiError) {
+            console.warn('API failed, using local calculation:', apiError);
+            botText = `Your BMI is ${localBMI.toFixed(1)} (${localCategory}). This was calculated locally as the backend is temporarily unavailable.`;
+            setLastBMICategory(localCategory);
+          }
           
         } else if (lowerInput.includes('bmi') || lowerInput.includes('calculate')) {
           botText = "I'll calculate your BMI. Please provide your weight in pounds (e.g., 143lb) and height (e.g., 5.3 or 63in).";
@@ -80,19 +109,69 @@ function App() {
       } else if (lowerInput.includes('diet')) {
         // Use BMI category if available for personalized diet, otherwise use general
         const dietCondition = lastBMICategory || 'general';
-        const response = await fetch(`${API_URL}/diet?condition=${dietCondition}`);
-        const data = await response.json();
-        botText = data.message;
+        
+        try {
+          const response = await fetch(`${API_URL}/diet?condition=${dietCondition}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(10000)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          botText = data.message;
+        } catch (apiError) {
+          console.warn('Diet API failed, using fallback:', apiError);
+          const fallbackDiets = {
+            normal: "Maintain your current weight with balanced meals. Include vegetables, lean proteins, and whole grains.",
+            overweight: "Focus on portion control and low-calorie foods. Increase vegetables and reduce sugar intake.",
+            obese: "Strict calorie control with medical supervision. Focus on nutrient-dense, low-calorie foods.",
+            underweight: "Increase calorie intake with healthy fats and proteins. Eat frequent, balanced meals.",
+            general: "Eat a balanced diet with vegetables, fruits, lean proteins, and whole grains. Stay hydrated!"
+          };
+          botText = fallbackDiets[dietCondition] || fallbackDiets.general;
+        }
       } else {
-        const response = await fetch(`${API_URL}/advise?user_query=${encodeURIComponent(input)}`);
-        const data = await response.json();
-        botText = data.response || data.message;
+        try {
+          const response = await fetch(`${API_URL}/advise?user_query=${encodeURIComponent(currentInput)}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(10000)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          botText = data.response || data.message;
+        } catch (apiError) {
+          console.warn('Advise API failed, using fallback:', apiError);
+          botText = "I'm having trouble connecting to my AI brain right now. Please try again in a moment or contact support if this persists.";
+        }
+      }
+      
+      // Ensure we always have a response
+      if (!botText || botText.trim() === '') {
+        botText = "I received your message but I'm having trouble processing it. Please try again.";
       }
       
       setMessages(prev => [...prev, { role: 'bot', text: botText }]);
-      setHistory(prev => [{ query: input, timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), type }, ...prev]);
+      setHistory(prev => [{ query: currentInput, timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), type }, ...prev]);
+      
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'bot', text: "Backend connection error." }]);
+      console.error('Critical error in sendMessage:', error);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: "I encountered an unexpected error. Please refresh the page and try again." 
+      }]);
     } finally {
       setLoading(false);
     }
@@ -153,72 +232,45 @@ function App() {
           </div>
 
           {/* Messages Area */}
-          <div className={`flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar ${showHistory ? 'opacity-50' : 'opacity-100'} transition-opacity`}>
-            {messages.map((msg, i) => {
-              // Determine BMI category for color coding
-              const lowerText = msg.text.toLowerCase();
-              const isNormal = lowerText.includes('normal') && lowerText.includes('bmi');
-              const isOverweight = lowerText.includes('overweight') && lowerText.includes('bmi');
-              const isUnderweight = lowerText.includes('underweight') && lowerText.includes('bmi');
-              const isObese = lowerText.includes('obese') && lowerText.includes('bmi');
-              
-              // Set border color based on BMI category
-              let bmiBorderColor = '';
-              if (isNormal) bmiBorderColor = 'border-l-4 border-green-500';
-              else if (isOverweight) bmiBorderColor = 'border-l-4 border-yellow-500';
-              else if (isUnderweight || isObese) bmiBorderColor = 'border-l-4 border-red-500';
-              
-              return (
-                <div key={i} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {/* AI Logo for bot messages */}
-                  {msg.role === 'bot' && (
-                    <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
-                      <Sparkles className="text-white" size={16} />
-                    </div>
-                  )}
-                  
-                  <div className={`p-4 rounded-[24px] text-sm leading-relaxed relative max-w-[80%] ${
-                    msg.role === 'user' 
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl' 
-                      : `bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm ${bmiBorderColor}`
-                  }`}>
-                    {/* --- BMI COLOR INDICATOR --- */}
-                    {isNormal && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[8px]">✓</span>
-                      </div>
-                    )}
-                    {isOverweight && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[8px]">!</span>
-                      </div>
-                    )}
-                    {(isUnderweight || isObese) && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[8px]">!</span>
-                      </div>
-                    )}
-                    
-                    {/* --- POSITIVE REINFORCEMENT (Confetti for Normal) --- */}
-                    {msg.role === 'bot' && isNormal && (
-                      <div className="confetti-container">
-                        <Sparkles className="text-yellow-400 animate-confetti" size={16} />
-                        <Sparkles className="text-blue-400 animate-confetti" size={12} style={{ animationDelay: '0.2s' }} />
-                        <Sparkles className="text-purple-400 animate-confetti" size={14} style={{ animationDelay: '0.1s' }} />
-                      </div>
-                    )}
-
-                    {msg.text}
+          <div className="flex-1 overflow-y-auto p-8 space-y-4">
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex items-start gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                {/* AI Logo for bot messages */}
+                {msg.role === 'bot' && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+                    <Sparkles className="text-white" size={16} />
                   </div>
+                )}
+                
+                <div className={`p-4 rounded-[24px] text-sm leading-relaxed relative max-w-[80%] ${
+                  msg.role === 'user' 
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-tr-none shadow-xl' 
+                    : 'bg-white border border-slate-50 text-slate-700 rounded-tl-none shadow-sm'
+                }`}>
+                  {/* BMI Color Coding */}
+                  {(() => {
+                    const lowerText = msg.text.toLowerCase();
+                    const isNormal = lowerText.includes('normal') && lowerText.includes('bmi');
+                    const isOverweight = lowerText.includes('overweight') && lowerText.includes('bmi');
+                    const isUnderweight = lowerText.includes('underweight') && lowerText.includes('bmi');
+                    const isObese = lowerText.includes('obese') && lowerText.includes('bmi');
+                    
+                    if (isNormal) return <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center"><span className="text-white text-[8px]">✓</span></div>;
+                    if (isOverweight) return <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center"><span className="text-white text-[8px]">!</span></div>;
+                    if (isUnderweight || isObese) return <div className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center"><span className="text-white text-[8px]">!</span></div>;
+                    return null;
+                  })()}
+
+                  {msg.text}
                 </div>
-              );
-            })}
+              </div>
+            ))}
             {loading && (
-               <div className="flex gap-2 p-5 bg-white/50 w-28 rounded-2xl animate-pulse ml-14">
-                  <div className="w-2 h-2 bg-slate-300 rounded-full" />
-                  <div className="w-2 h-2 bg-slate-300 rounded-full" />
-                  <div className="w-2 h-2 bg-slate-300 rounded-full" />
-               </div>
+              <div className="flex gap-2 p-5 bg-white/50 w-28 rounded-2xl ml-14">
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-slate-300 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </div>
             )}
             <div ref={scrollRef} />
           </div>
