@@ -154,7 +154,27 @@ function App() {
           botText = data.response || data.message;
         } catch (apiError) {
           console.warn('Advise API failed, using fallback:', apiError);
-          botText = "I'm having trouble connecting to my AI brain right now. Please try again in a moment or contact support if this persists.";
+          
+          // Smart fallback responses based on input
+          const lowerInput = currentInput.toLowerCase();
+          
+          if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
+            botText = "Hello! I'm your MediSync AI health assistant. I can help you calculate BMI, create diet plans, or answer health questions. What would you like to know?";
+          } else if (lowerInput.includes('how are you')) {
+            botText = "I'm doing great and ready to help with your health goals! I can assist with BMI calculations, diet recommendations, and general health advice.";
+          } else if (lowerInput.includes('bmi')) {
+            botText = "I can calculate your BMI! Just tell me your weight (like 150lb) and height (like 5.8 or 70in).";
+          } else if (lowerInput.includes('diet') || lowerInput.includes('food')) {
+            botText = "I can create personalized diet plans for you! First, let me know your BMI category, or I can give you general healthy eating advice.";
+          } else if (lowerInput.includes('help')) {
+            botText = "I can help with: 🏃 BMI calculation, 🥗 Diet plans, 💊 General health advice, 🏥 Finding specialists. Just ask me anything health-related!";
+          } else if (lowerInput.includes('thank')) {
+            botText = "You're welcome! I'm here to help you on your health journey. Feel free to ask anything else!";
+          } else if (lowerInput.includes('bye') || lowerInput.includes('goodbye')) {
+            botText = "Goodbye! Remember to take care of your health. I'm here whenever you need me!";
+          } else {
+            botText = "I'm currently having some technical difficulties with my AI connection. However, I can still help you with BMI calculations and diet plans! Try asking me to 'Calculate BMI' or 'Diet Plan'.";
+          }
         }
       }
       
