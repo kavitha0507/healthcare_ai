@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, Send, User, Bot, Activity, Shield, Sparkles, History, X } from 'lucide-react';
+import { Heart, Send, User, Bot, Activity, Shield, Sparkles, History, X, Bell, Clock, Sun } from 'lucide-react';
 
 const API_URL = 'https://healthcare-ai-q3yl.vercel.app';
 
@@ -12,11 +12,115 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
   const [lastBMICategory, setLastBMICategory] = useState(null); // Store BMI category for personalized diet
+  const [showWakeUpSettings, setShowWakeUpSettings] = useState(false);
+  const [wakeUpTime, setWakeUpTime] = useState('07:00');
+  const [wakeUpEnabled, setWakeUpEnabled] = useState(false);
+  const [wakeUpMessage, setWakeUpMessage] = useState('Good morning! Time to start your healthy day! 🌅');
   const scrollRef = useRef(null);
+  const wakeUpIntervalRef = useRef(null);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
+    // Load saved wake-up settings
+    const savedSettings = localStorage.getItem('wakeUpSettings');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      setWakeUpTime(settings.time || '07:00');
+      setWakeUpEnabled(settings.enabled || false);
+      setWakeUpMessage(settings.message || 'Good morning! Time to start your healthy day! 🌅');
+    }
+  }, []);
+
+  // Check and set wake-up alarm
+  useEffect(() => {
+    if (wakeUpEnabled) {
+      checkAndSetWakeUpAlarm();
+    } else {
+      clearWakeUpAlarm();
+    }
+    
+    return () => clearWakeUpAlarm();
+  }, [wakeUpEnabled, wakeUpTime]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  const checkAndSetWakeUpAlarm = () => {
+    clearWakeUpAlarm();
+    
+    const now = new Date();
+    const [hours, minutes] = wakeUpTime.split(':').map(Number);
+    const wakeUpDate = new Date();
+    wakeUpDate.setHours(hours, minutes, 0, 0);
+    
+    // If wake-up time has passed today, set for tomorrow
+    if (wakeUpDate <= now) {
+      wakeUpDate.setDate(wakeUpDate.getDate() + 1);
+    }
+    
+    const timeUntilWakeUp = wakeUpDate.getTime() - now.getTime();
+    
+    wakeUpIntervalRef.current = setTimeout(() => {
+      triggerWakeUpNotification();
+      // Set next day's alarm
+      checkAndSetWakeUpAlarm();
+    }, timeUntilWakeUp);
+  };
+
+  const clearWakeUpAlarm = () => {
+    if (wakeUpIntervalRef.current) {
+      clearTimeout(wakeUpIntervalRef.current);
+      wakeUpIntervalRef.current = null;
+    }
+  };
+
+  const triggerWakeUpNotification = () => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const notification = new Notification('MediSync AI - Wake Up! 🌅', {
+        body: wakeUpMessage,
+        icon: '/favicon.ico',
+        tag: 'wake-up',
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'open-app',
+            title: 'Open MediSync AI'
+          },
+          {
+            action: 'snooze',
+            title: 'Snooze 5 min'
+          }
+        ]
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      // Play a sound (if you have an audio file)
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmFgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+  };
+
+  const saveWakeUpSettings = () => {
+    const settings = {
+      time: wakeUpTime,
+      enabled: wakeUpEnabled,
+      message: wakeUpMessage
+    };
+    localStorage.setItem('wakeUpSettings', JSON.stringify(settings));
+  };
+
+  useEffect(() => {
+    saveWakeUpSettings();
+  }, [wakeUpTime, wakeUpEnabled, wakeUpMessage]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -225,6 +329,12 @@ function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <button onClick={() => setShowWakeUpSettings(true)} className="p-2.5 hover:bg-slate-50 rounded-full transition-all text-slate-400 relative">
+              <Bell size={20} />
+              {wakeUpEnabled && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse" />
+              )}
+            </button>
             <button onClick={() => setShowHistory(true)} className="p-2.5 hover:bg-slate-50 rounded-full transition-all text-slate-400">
               <History size={20} />
             </button>
@@ -362,6 +472,118 @@ function App() {
             <div className="absolute bottom-8 left-8 right-8 text-center border-t border-slate-100 pt-4">
               <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
                 <Shield size={12} /> MediSync Secured
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 5. WAKE-UP SETTINGS PANEL */}
+      {showWakeUpSettings && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/10 z-40 transition-opacity" 
+            onClick={() => setShowWakeUpSettings(false)}
+          ></div>
+          
+          <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white z-50 shadow-[-20px_0_50px_rgba(0,0,0,0.05)] p-8 border-l border-slate-100 transform transition-transform duration-300 ease-out">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                  <Bell size={22} className="text-blue-600" /> Wake-Up Settings
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Daily Health Reminder</p>
+              </div>
+              <button onClick={() => setShowWakeUpSettings(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Enable/Disable Toggle */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Sun className="text-yellow-500" size={20} />
+                  <div>
+                    <p className="font-semibold text-slate-800">Wake-Up Alarm</p>
+                    <p className="text-xs text-slate-500">Daily health reminder</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setWakeUpEnabled(!wakeUpEnabled)}
+                  className={`w-12 h-6 rounded-full transition-colors ${wakeUpEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
+                >
+                  <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${wakeUpEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+
+              {/* Time Picker */}
+              <div className="p-4 bg-slate-50 rounded-xl">
+                <label className="flex items-center gap-3 mb-3">
+                  <Clock className="text-blue-500" size={20} />
+                  <span className="font-semibold text-slate-800">Wake-Up Time</span>
+                </label>
+                <input
+                  type="time"
+                  value={wakeUpTime}
+                  onChange={(e) => setWakeUpTime(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-lg text-lg font-semibold text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Custom Message */}
+              <div className="p-4 bg-slate-50 rounded-xl">
+                <label className="flex items-center gap-3 mb-3">
+                  <Sparkles className="text-purple-500" size={20} />
+                  <span className="font-semibold text-slate-800">Wake-Up Message</span>
+                </label>
+                <textarea
+                  value={wakeUpMessage}
+                  onChange={(e) => setWakeUpMessage(e.target.value)}
+                  placeholder="Good morning! Time to start your healthy day! 🌅"
+                  className="w-full p-3 bg-white border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+              </div>
+
+              {/* Status */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${wakeUpEnabled ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} />
+                  <span className="text-sm font-semibold text-slate-800">
+                    {wakeUpEnabled ? 'Alarm Active' : 'Alarm Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  {wakeUpEnabled 
+                    ? `Next alarm: ${wakeUpTime} tomorrow` 
+                    : 'Enable alarm to receive daily wake-up notifications'
+                  }
+                </p>
+              </div>
+
+              {/* Quick Messages */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quick Messages</p>
+                {[
+                  'Good morning! Time to start your healthy day! 🌅',
+                  'Rise and shine! Let\'s make today healthy! 💪',
+                  'Wake up! Your health journey awaits! 🏃‍♀️',
+                  'Morning! Time for your daily health check! 🌟'
+                ].map((message, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setWakeUpMessage(message)}
+                    className="w-full text-left p-3 bg-white border border-slate-200 rounded-lg text-sm hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                  >
+                    {message}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="absolute bottom-8 left-8 right-8 text-center border-t border-slate-100 pt-4">
+              <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                <Shield size={12} /> MediSync Wake-Up
               </p>
             </div>
           </div>
