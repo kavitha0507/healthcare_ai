@@ -111,13 +111,120 @@ function App() {
     saveWakeUpSettings();
   }, [wakeUpTime, wakeUpEnabled, wakeUpMessage]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
+    
     const userMsg = { role: 'user', text: input };
     setMessages(prev => [...prev, userMsg]);
+    const currentInput = input;
     setInput('');
-    const botMsg = { role: 'bot', text: "I received your message: " + input };
-    setMessages(prev => [...prev, botMsg]);
+
+    try {
+      let botText = "";
+      const lowerInput = currentInput.toLowerCase();
+      
+      // Check for weight pattern (number followed by lb or lbs)
+      const weightMatch = currentInput.match(/(\d+(?:\.\d+)?)\s*(?:lb|lbs)/i);
+      // Check for height pattern
+      let heightMatch = currentInput.match(/[,\s]+(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)?['"]?/i);
+      if (!heightMatch) {
+        heightMatch = currentInput.match(/(\d+(?:\.\d+)?)\s*(?:in|inches|ft|foot|feet)/i);
+      }
+      // Also match patterns like "5.3'" or "5'3"" (feet and inches)
+      const heightFeetInchesMatch = currentInput.match(/(\d+)'\s*(\d+)/i);
+      
+      const isBMIRequest = lowerInput.includes('bmi') || lowerInput.includes('calculate') || 
+                          (weightMatch && heightMatch) || (weightMatch && heightFeetInchesMatch);
+      
+      if (isBMIRequest) {
+        if (weightMatch && (heightMatch || heightFeetInchesMatch)) {
+          const weight = parseFloat(weightMatch[1]);
+          let height;
+          
+          if (heightFeetInchesMatch) {
+            // Format: 5'3" - convert to inches
+            const feet = parseFloat(heightFeetInchesMatch[1]);
+            const inches = parseFloat(heightFeetInchesMatch[2]);
+            height = (feet * 12) + inches;
+          } else {
+            height = parseFloat(heightMatch[1]);
+            // If height is less than 10, assume it's in feet (convert to inches)
+            if (height < 10) {
+              height = height * 12;
+            }
+          }
+          
+          // Local BMI calculation as fallback
+          const localBMI = (weight / (height * height)) * 703;
+          let localCategory = '';
+          if (localBMI < 18.5) localCategory = 'underweight';
+          else if (localBMI < 25) localCategory = 'normal';
+          else if (localBMI < 30) localCategory = 'overweight';
+          else localCategory = 'obese';
+          
+          try {
+            const response = await fetch(`https://healthcare-ai-q3yl.vercel.app/bmi?weight=${weight}&height=${height}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              signal: AbortSignal.timeout(10000) // 10 second timeout
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            botText = data.message || `Your BMI is ${localBMI.toFixed(1)} (${localCategory})`;
+            
+          } catch (apiError) {
+            console.warn('API failed, using local calculation:', apiError);
+            botText = `Your BMI is ${localBMI.toFixed(1)} (${localCategory}). This was calculated locally as the backend is temporarily unavailable.`;
+          }
+          
+        } else if (lowerInput.includes('bmi') || lowerInput.includes('calculate')) {
+          botText = "I'll calculate your BMI. Please provide your weight in pounds (e.g., 143lb) and height (e.g., 5.3 or 63in).";
+        } else {
+          botText = "I need your weight in pounds (e.g., 143lb) and height in inches or feet (e.g., 5.3 or 63in).";
+        }
+      } else if (lowerInput.includes('diet')) {
+        botText = "I can create personalized diet plans for you! First, let me calculate your BMI, or I can give you general healthy eating advice.";
+      } else {
+        // Smart fallback responses based on input
+        if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
+          botText = "Hello! I'm your MediSync AI health assistant. I can help you calculate BMI, create diet plans, or answer health questions. What would you like to know?";
+        } else if (lowerInput.includes('how are you')) {
+          botText = "I'm doing great and ready to help with your health goals! I can assist with BMI calculations, diet recommendations, and general health advice.";
+        } else if (lowerInput.includes('bmi')) {
+          botText = "I can calculate your BMI! Just tell me your weight (like 150lb) and height (like 5.8 or 70in).";
+        } else if (lowerInput.includes('diet') || lowerInput.includes('food')) {
+          botText = "I can create personalized diet plans for you! First, let me know your BMI category, or I can give you general healthy eating advice.";
+        } else if (lowerInput.includes('help')) {
+          botText = "I can help with: 🏃 BMI calculation, 🥗 Diet plans, 💊 General health advice, 🏥 Finding specialists. Just ask me anything health-related!";
+        } else if (lowerInput.includes('thank')) {
+          botText = "You're welcome! I'm here to help you on your health journey. Feel free to ask anything else!";
+        } else if (lowerInput.includes('bye') || lowerInput.includes('goodbye')) {
+          botText = "Goodbye! Remember to take care of your health. I'm here whenever you need me!";
+        } else {
+          botText = "I can help you with BMI calculations, diet plans, and general health advice! Try asking me to 'Calculate BMI' or 'Diet Plan'.";
+        }
+      }
+      
+      // Ensure we always have a response
+      if (!botText || botText.trim() === '') {
+        botText = "I received your message but I'm having trouble processing it. Please try again.";
+      }
+      
+      setMessages(prev => [...prev, { role: 'bot', text: botText }]);
+      
+    } catch (error) {
+      console.error('Critical error in sendMessage:', error);
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        text: "I encountered an unexpected error. Please refresh the page and try again." 
+      }]);
+    }
   };
 
   return (
