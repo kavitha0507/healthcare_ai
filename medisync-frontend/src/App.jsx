@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart, Send, User, Bot, Activity, Shield, Sparkles, History, X, Bell, Clock, Sun } from 'lucide-react';
 
-const API_URL = 'https://healthcare-ai-q3yl.vercel.app';
+const API_URL = 'https://healthcare-ai-q3yl.vercel.app'; // Updated for deployment
 
 function App() {
   const [input, setInput] = useState('');
