@@ -307,7 +307,7 @@ function App() {
       <div className="absolute top-[-5%] left-[-5%] w-96 h-96 bg-blue-400/10 rounded-full blur-[100px] animate-pulse" />
       <div className="absolute bottom-[10%] right-[-5%] w-[500px] h-[500px] bg-purple-400/10 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '2s'}} />
 
-      <div className="relative z-10 max-w-5xl mx-auto min-h-screen flex flex-col p-4 md:p-8 h-screen">
+      <div className="relative z-10 max-w-5xl mx-auto min-h-screen flex flex-col p-4 md:p-8">
         
         {/* 2. THE TOP NAV (Restored to the original Logo & Polish) */}
         <header className="flex justify-between items-center bg-white/80 backdrop-blur-md p-5 rounded-[32px] border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
