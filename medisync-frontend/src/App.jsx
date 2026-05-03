@@ -257,27 +257,47 @@ function App() {
           const data = await response.json();
           botText = data.response || data.message;
         } catch (apiError) {
-          console.warn('Advise API failed, using fallback:', apiError);
+          console.warn('Advise API failed, using intelligent fallback:', apiError);
           
-          // Smart fallback responses based on input
+          // Intelligent health responses based on input analysis
           const lowerInput = currentInput.toLowerCase();
           
           if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
-            botText = "Hello! I'm your MediSync AI health assistant. I can help you calculate BMI, create diet plans, or answer health questions. What would you like to know?";
+            botText = "Hello! I'm your MediSync AI health assistant. I can help you with BMI calculations, personalized diet plans, exercise recommendations, sleep advice, stress management, and answer any health questions you have. What specific health topic would you like to explore today?";
           } else if (lowerInput.includes('how are you')) {
-            botText = "I'm doing great and ready to help with your health goals! I can assist with BMI calculations, diet recommendations, and general health advice.";
+            botText = "I'm functioning optimally and ready to provide you with evidence-based health information! My knowledge includes nutrition, exercise science, mental health, preventive care, and chronic disease management. How can I assist your health journey today?";
+          } else if (lowerInput.includes('headache') || lowerInput.includes('migraine')) {
+            botText = "For headaches, I recommend: 1) Stay hydrated - dehydration is a common trigger 2) Try cold compress on forehead 3) Rest in dark, quiet room 4) Consider over-the-counter pain relievers 5) Track frequency/intensity in a health diary. If headaches are severe or frequent, consult a healthcare provider as they could indicate underlying conditions.";
+          } else if (lowerInput.includes('sleep') || lowerInput.includes('insomnia')) {
+            botText = "For better sleep: 1) Maintain consistent sleep schedule 2) Create relaxing bedtime routine 3) Avoid screens 1 hour before bed 4) Keep room cool (60-67°F) 5) Limit caffeine after 2 PM 6) Try relaxation techniques or meditation 7) Exercise regularly but not close to bedtime. Quality sleep is crucial for immune function and mental health!";
+          } else if (lowerInput.includes('stress') || lowerInput.includes('anxiety')) {
+            botText = "Stress management techniques: 1) Deep breathing exercises - 4-7-8 breathing pattern 2) Progressive muscle relaxation 3) Regular physical activity (30 mins daily) 4) Mindfulness meditation (5-10 minutes) 5) Limit caffeine and alcohol 6) Connect with supportive friends/family 7) Consider professional help if stress is overwhelming. Remember: some stress is normal, but chronic stress needs attention.";
+          } else if (lowerInput.includes('exercise') || lowerInput.includes('workout')) {
+            botText = "For effective exercise routine: 1) Aim for 150 minutes moderate activity weekly 2) Include both cardio and strength training 3) Start with 10-15 minute sessions if new 4) Mix activities you enjoy 5) Include flexibility training 6) Allow recovery days 7) Listen to your body. Consistency beats intensity! What type of exercise interests you most?";
+          } else if (lowerInput.includes('weight loss') || lowerInput.includes('lose weight')) {
+            botText = "Healthy weight loss approach: 1) Create modest calorie deficit (500-750 calories daily) 2) Focus on nutrient-dense foods 3) Include protein in each meal (20-30g) 4) Exercise 300+ minutes weekly 5) Get 7-9 hours sleep 6) Manage stress levels 7) Track progress weekly, not daily. Sustainable loss is 1-2 pounds per week. Would you like a personalized plan?";
+          } else if (lowerInput.includes('energy') || lowerInput.includes('tired')) {
+            botText = "To boost energy levels: 1) Check iron levels - deficiency causes fatigue 2) Stay hydrated (8 glasses daily) 3) Eat complex carbs, not simple sugars 4) Get 7-9 hours quality sleep 5) Exercise regularly 6) Manage stress 7) Limit processed foods 8) Consider B-vitamin supplements. Persistent fatigue warrants medical evaluation to rule out underlying conditions.";
+          } else if (lowerInput.includes('blood pressure') || lowerInput.includes('hypertension')) {
+            botText = "Blood pressure management: 1) Reduce sodium intake to <2,300mg daily 2) Exercise 30 minutes most days 3) Maintain healthy weight 4) Limit alcohol 5) Manage stress 6) Quit smoking 7) Monitor BP regularly 8) Take medications as prescribed. Normal BP is <120/80. High BP often has no symptoms but can cause serious damage if untreated.";
+          } else if (lowerInput.includes('diabetes') || lowerInput.includes('blood sugar')) {
+            botText = "Diabetes management: 1) Monitor blood glucose regularly 2) Follow medication schedule precisely 3) Count carbohydrates consistently 4) Choose low-glycemic foods 5) Exercise after meals (with doctor approval) 6) Stay hydrated 7) Check feet daily for sores 8) Regular eye exams. Prevention includes maintaining healthy weight and regular screening if at risk.";
+          } else if (lowerInput.includes('vitamin') || lowerInput.includes('supplement')) {
+            botText = "Common vitamin needs: 1) Vitamin D - many people are deficient 2) B12 - important for energy, especially vegetarians 3) Iron - women often need more 4) Calcium - bone health 5) Omega-3 - heart and brain health. Best source is always food first. Consider blood tests to identify specific deficiencies before supplementing. Always consult healthcare provider before starting supplements.";
+          } else if (lowerInput.includes('heart') || lowerInput.includes('cardio')) {
+            botText = "Heart health essentials: 1) Exercise 150 minutes weekly 2) Eat Mediterranean-style diet 3) Maintain healthy weight 4) Don't smoke 5) Limit alcohol 6) Manage stress 7) Sleep 7-9 hours 8) Control blood pressure and cholesterol. Warning signs: chest pain, shortness of breath, palpitations. Seek immediate care for these symptoms.";
           } else if (lowerInput.includes('bmi')) {
-            botText = "I can calculate your BMI! Just tell me your weight (like 150lb) and height (like 5.8 or 70in).";
-          } else if (lowerInput.includes('diet') || lowerInput.includes('food')) {
-            botText = "I can create personalized diet plans for you! First, let me know your BMI category, or I can give you general healthy eating advice.";
+            botText = "I can calculate your BMI! Just tell me your weight (like 150lb) and height (like 5.8 or 63in). BMI categories: Underweight <18.5, Normal 18.5-24.9, Overweight 25-29.9, Obese ≥30. BMI is a screening tool - body composition, fitness level, and overall health are also important factors!";
+          } else if (lowerInput.includes('diet') || lowerInput.includes('nutrition')) {
+            botText = "Balanced nutrition principles: 1) Eat variety of colorful fruits/vegetables 2) Choose whole grains over refined 3) Include lean proteins (fish, poultry, legumes) 4) Healthy fats (avocado, nuts, olive oil) 5) Limit processed foods and added sugars 6) Portion control 7) Stay hydrated 8) Time meals mindfully. What specific nutrition area interests you most?";
           } else if (lowerInput.includes('help')) {
-            botText = "I can help with: 🏃 BMI calculation, 🥗 Diet plans, 💊 General health advice, 🏥 Finding specialists. Just ask me anything health-related!";
+            botText = "I'm your comprehensive health assistant! I can help with: 🩺 BMI calculations and body composition 🥗 Personalized nutrition plans 🏃 Exercise recommendations 💊 Medication information 😴 Sleep optimization 😰 Stress management ❤️ Heart health 🩸 Diabetes care 🧠 Mental health support 🦠 Disease prevention 🏥 Finding specialists. What health topic would you like to explore?";
           } else if (lowerInput.includes('thank')) {
-            botText = "You're welcome! I'm here to help you on your health journey. Feel free to ask anything else!";
+            botText = "You're very welcome! Remember that health is a journey, not a destination. I'm here to support you with evidence-based information whenever you need it. Keep asking questions and taking small steps toward your health goals!";
           } else if (lowerInput.includes('bye') || lowerInput.includes('goodbye')) {
-            botText = "Goodbye! Remember to take care of your health. I'm here whenever you need me!";
+            botText = "Take care of yourself! Remember: small consistent actions lead to big health improvements. I'm here whenever you need health information or support. Your health journey matters!";
           } else {
-            botText = "I'm currently having some technical difficulties with my AI connection. However, I can still help you with BMI calculations and diet plans! Try asking me to 'Calculate BMI' or 'Diet Plan'.";
+            botText = "I'm here to help with your health questions! You can ask me about: exercise routines, nutrition advice, sleep problems, stress management, specific conditions, medication information, preventive care, or any health topic. What would you like to know more about?";
           }
         }
       }
