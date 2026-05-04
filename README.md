@@ -218,7 +218,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Created by [Kavitha Mynala](https://github.com/kavitha0507)**
 
-- Email: your-email@example.com
+- Email: kavithamynala@gmail.com
 - GitHub: [kavitha0507](https://github.com/kavitha0507)
 - Live Demo: [MediSync AI](https://healthcare-ai-five.vercel.app)
 
